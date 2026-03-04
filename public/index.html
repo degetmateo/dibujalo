@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dibújalo - Adivina la palabra</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="screen view-active">
+        <div class="card">
+            <h1>Dibújalo</h1>
+            <p>Juego multijugador de dibujo y adivinanza</p>
+            <form id="loginForm">
+                <input type="text" id="nicknameInput" placeholder="Ingresa tu apodo..." required maxlength="15"
+                    autocomplete="off">
+                <button type="submit" class="primary-btn">Jugar</button>
+            </form>
+            <div id="loginError" class="error-msg hidden"></div>
+        </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div id="lobbyScreen" class="screen">
+        <div class="lobby-container">
+            <header class="lobby-header">
+                <h2>Salas Disponibles</h2>
+                <div class="lobby-controls">
+                    <input type="text" id="searchRoomInput" placeholder="Buscar sala...">
+                    <button id="showCreateRoomBtn" class="primary-btn">Crear Sala</button>
+                </div>
+            </header>
+            <div class="room-list" id="roomList">
+                <!-- Rooms will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
+    <div id="createRoomModal" class="modal">
+        <div class="modal-content">
+            <h3>Crear Nueva Sala</h3>
+            <form id="createRoomForm">
+                <div class="form-group">
+                    <label for="roomName">Nombre de la Sala</label>
+                    <input type="text" id="roomName" required maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="roomRounds">Rondas</label>
+                    <select id="roomRounds">
+                        <option value="1">1 Ronda</option>
+                        <option value="2">2 Rondas</option>
+                        <option value="3" selected>3 Rondas</option>
+                        <option value="5">5 Rondas</option>
+                        <option value="10">10 Rondas</option>
+                    </select>
+                </div>
+                <div class="form-group row">
+                    <label for="roomPrivate">Sala Privada</label>
+                    <input type="checkbox" id="roomPrivate">
+                </div>
+                <div class="form-group" id="passwordGroup" style="display: none;">
+                    <label for="roomPassword">Contraseña</label>
+                    <input type="password" id="roomPassword">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelCreateRoom" class="secondary-btn">Cancelar</button>
+                    <button type="submit" class="primary-btn">Crear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3>Sala Privada</h3>
+            <p>Ingresa la contraseña para unirte a la sala.</p>
+            <form id="passwordForm">
+                <input type="password" id="joinPasswordInput" required placeholder="Contraseña">
+                <div id="passwordError" class="error-msg hidden">Contraseña incorrecta</div>
+                <div class="modal-actions">
+                    <button type="button" id="cancelPasswordBtn" class="secondary-btn">Cancelar</button>
+                    <button type="submit" class="primary-btn">Unirse</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Game Room Screen -->
+    <div id="gameScreen" class="screen">
+        <div class="game-layout">
+            <!-- Left Sidebar: Players -->
+            <aside class="sidebar players-sidebar">
+                <div class="sidebar-header">
+                    <h3>Jugadores</h3>
+                </div>
+                <ul id="playersList" class="players-list">
+                    <!-- Player items will be injected here -->
+                </ul>
+                <div class="leave-btn-container">
+                    <button id="leaveRoomBtn" class="danger-btn">Salir de la Sala</button>
+                </div>
+            </aside>
+
+            <!-- Center: Canvas and Status -->
+            <main class="game-main">
+                <header class="game-header">
+                    <div class="timer" id="timerDisplay">--</div>
+                    <div class="word-hints" id="wordDisplay">ESPERANDO JUGADORES</div>
+                    <div class="round-info" id="roundDisplay">Ronda: -/-</div>
+                </header>
+
+                <div class="canvas-container">
+                    <canvas id="drawingCanvas"></canvas>
+
+                    <!-- Word Selection Overlay (For Painter) -->
+                    <div id="wordSelectionOverlay" class="canvas-overlay">
+                        <h3>Elige una palabra para dibujar</h3>
+                        <div class="word-options" id="wordOptionsDiv">
+                            <!-- Options injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Round End Overlay -->
+                    <div id="roundEndOverlay" class="canvas-overlay">
+                        <h2 id="roundEndMessage">¡La palabra era: <span id="roundEndWord"></span>!</h2>
+                        <div id="roundScoreboard" class="round-scoreboard"></div>
+                    </div>
+
+                    <!-- Start Game Overlay (For lobby host or general) -->
+                    <div id="startGameOverlay" class="canvas-overlay">
+                        <h2>Esperando para empezar...</h2>
+                        <p>Al menos 2 jugadores requeridos.</p>
+                        <button id="startGameBtn" class="primary-btn hidden">Comenzar Partida</button>
+                    </div>
+                </div>
+
+                <div class="controls tools-disabled" id="drawingControls">
+                    <div class="tool-group">
+                        <button id="toolPencil" class="tool-btn active" title="Pincel">✏️</button>
+                        <button id="toolEraser" class="tool-btn" title="Goma">🧽</button>
+                    </div>
+                    <div class="tool-group">
+                        <input type="color" id="colorPicker" value="#38bdf8" title="Color">
+                    </div>
+                    <div class="tool-group size-group">
+                        <span class="size-label">Grosor:</span>
+                        <input type="range" id="sizePicker" min="1" max="50" value="5">
+                    </div>
+                    <div class="tool-group right-align">
+                        <button id="clearBtn" class="secondary-btn" title="Limpiar Pizarra">🗑️ Limpiar</button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar: Chat -->
+            <aside class="sidebar chat-sidebar">
+                <div class="sidebar-header">
+                    <h3>Chat</h3>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Messages injected here -->
+                </div>
+                <form id="chatForm" class="chat-input-container">
+                    <input type="text" id="chatInput" placeholder="Escribe aquí para adivinar..." autocomplete="off">
+                </form>
+            </aside>
+        </div>
+    </div> <!-- /Game Room -->
+
+    <!-- Global Notifications -->
+    <div id="notificationArea" class="notification-area"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
