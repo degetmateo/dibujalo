@@ -61,6 +61,7 @@ const ctx = canvas.getContext('2d');
 const colorPicker = document.getElementById('colorPicker');
 const sizePicker = document.getElementById('sizePicker');
 const clearBtn = document.getElementById('clearBtn');
+const undoBtn = document.getElementById('undoBtn');
 const toolPencil = document.getElementById('toolPencil');
 const toolEraser = document.getElementById('toolEraser');
 
@@ -437,10 +438,33 @@ let current = { x: 0, y: 0, color: colorPicker.value, size: sizePicker.value };
 
 colorPicker.addEventListener('input', (e) => current.color = e.target.value);
 sizePicker.addEventListener('input', (e) => current.size = e.target.value);
+
+let strokesHistory = [];
+let currentStroke = [];
+
+function redrawHistory() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokesHistory.forEach(stroke => {
+        stroke.forEach(line => {
+            drawLine(line.x0, line.y0, line.x1, line.y1, line.color, line.size, line.isEraser, false);
+        });
+    });
+}
+
 clearBtn.addEventListener('click', () => {
     if (!myState.isPainter) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokesHistory = [];
     socket.emit('clear');
+});
+
+undoBtn.addEventListener('click', () => {
+    if (!myState.isPainter) return;
+    if (strokesHistory.length > 0) {
+        strokesHistory.pop();
+        redrawHistory();
+        socket.emit('undo');
+    }
 });
 
 function drawLine(x0, y0, x1, y1, color, size, isEraser, emit) {
@@ -459,15 +483,22 @@ function drawLine(x0, y0, x1, y1, color, size, isEraser, emit) {
     ctx.lineWidth = size;
     ctx.stroke();
     ctx.closePath();
+    ctx.closePath();
     ctx.globalCompositeOperation = 'source-over'; // reset
 
-    if (!emit || !myState.isPainter) return;
+    // Always store absolute coords if we are drawing locally
+    if (emit && myState.isPainter) {
+        currentStroke.push({
+            x0: x0, y0: y0, x1: x1, y1: y1,
+            color: color, size: size, isEraser: isEraser
+        });
 
-    socket.emit('draw', {
-        x0: x0 / canvas.width, y0: y0 / canvas.height,
-        x1: x1 / canvas.width, y1: y1 / canvas.height,
-        color: color, size: size, isEraser: isEraser
-    });
+        socket.emit('draw', {
+            x0: x0 / canvas.width, y0: y0 / canvas.height,
+            x1: x1 / canvas.width, y1: y1 / canvas.height,
+            color: color, size: size, isEraser: isEraser
+        });
+    }
 }
 
 function getPos(e) {
@@ -481,6 +512,7 @@ function getPos(e) {
 function onDrawStart(e) {
     if (!myState.isPainter) return;
     isDrawing = true;
+    currentStroke = [];
     const pos = getPos(e);
     current.x = pos.x; current.y = pos.y;
     // Draw a dot when clicking
@@ -490,6 +522,12 @@ function onDrawStart(e) {
 function onDrawEnd(e) {
     if (!isDrawing) return;
     isDrawing = false;
+    if (currentStroke.length > 0) {
+        strokesHistory.push([...currentStroke]);
+        if (myState.isPainter) {
+            socket.emit('strokeEnd');
+        }
+    }
 }
 
 function onDrawMove(e) {
@@ -510,10 +548,41 @@ canvas.addEventListener('touchmove', onDrawMove, { passive: true });
 
 // Listen for remote draw events
 socket.on('draw', (data) => {
-    drawLine(data.x0 * canvas.width, data.y0 * canvas.height, data.x1 * canvas.width, data.y1 * canvas.height, data.color, data.size, data.isEraser, false);
+    // Only remote lines are drawn, and pushed to history for spectators so they can clear/undo them when events arrive
+    const ax0 = data.x0 * canvas.width;
+    const ay0 = data.y0 * canvas.height;
+    const ax1 = data.x1 * canvas.width;
+    const ay1 = data.y1 * canvas.height;
+
+    if (!myState.isPainter) {
+        currentStroke.push({
+            x0: ax0, y0: ay0, x1: ax1, y1: ay1,
+            color: data.color, size: data.size, isEraser: data.isEraser
+        });
+    }
+
+    // Try to group remote strokes simply (this is basic sync logic for spectators)
+    drawLine(ax0, ay0, ax1, ay1, data.color, data.size, data.isEraser, false);
 });
 
-socket.on('clear', () => { ctx.clearRect(0, 0, canvas.width, canvas.height); });
+socket.on('strokeEnd', () => {
+    if (!myState.isPainter) {
+        strokesHistory.push([...currentStroke]);
+        currentStroke = [];
+    }
+});
+
+socket.on('undo', () => {
+    if (!myState.isPainter) {
+        if (strokesHistory.length > 0) strokesHistory.pop();
+        redrawHistory();
+    }
+});
+
+socket.on('clear', () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    strokesHistory = [];
+});
 
 // Utils
 function escapeHtml(unsafe) {

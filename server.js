@@ -10,21 +10,17 @@ const io = new Server(server);
 const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 
+const fs = require('fs');
+
 // --- GAME DATA ---
-const dictionary = [
-    "perro", "gato", "elefante", "computadora", "teclado", "raton",
-    "monitor", "paraguas", "arcoiris", "hamburguesa", "pizza", "coche",
-    "bicicleta", "avion", "tren", "guitarra", "piano", "bateria",
-    "reloj", "telefono", "pantalon", "camisa", "sombrero", "gafas",
-    "sol", "luna", "estrella", "nube", "montaña", "rio", "oceano",
-    "arbol", "flor", "manzana", "platano", "cereza", "sandia",
-    "pinguino", "jirafa", "leon", "tigre", "oso", "conejo", "zorro",
-    "castillo", "espada", "escudo", "corona", "fantasma", "bruja",
-    "calabaza", "murcielago", "arania", "esqueleto", "vampiro",
-    "zombie", "extraterrestre", "cohete", "astronauta", "planeta",
-    "telescopio", "microscopio", "libelula", "mariposa", "cangrejo",
-    "tiburon", "ballena", "delfin", "pulpo", "medusa", "caracol"
-];
+let dictionary = [];
+try {
+    const rawWords = fs.readFileSync(path.join(__dirname, 'words.json'), 'utf8');
+    dictionary = JSON.parse(rawWords);
+} catch (err) {
+    console.error('Error loading words.json, fallback to defaults:', err);
+    dictionary = ["perro", "gato", "elefante"];
+}
 
 const ROUND_TIME = 100; // 100 seconds per drawing phase
 
@@ -403,6 +399,24 @@ io.on('connection', (socket) => {
         if (r && r.gameState.painterId === socket.id && r.gameState.status === 'playing') {
             // Forward back to others in room
             socket.to(r.id).emit('draw', data);
+        }
+    });
+
+    socket.on('strokeEnd', () => {
+        const u = users[socket.id];
+        if (!u || !u.roomId) return;
+        const r = rooms[u.roomId];
+        if (r && r.gameState.painterId === socket.id && r.gameState.status === 'playing') {
+            socket.to(r.id).emit('strokeEnd');
+        }
+    });
+
+    socket.on('undo', () => {
+        const u = users[socket.id];
+        if (!u || !u.roomId) return;
+        const r = rooms[u.roomId];
+        if (r && r.gameState.painterId === socket.id && r.gameState.status === 'playing') {
+            socket.to(r.id).emit('undo');
         }
     });
 
