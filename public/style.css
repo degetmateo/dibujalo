@@ -711,4 +711,79 @@ input[type="color"]::-webkit-color-swatch {
         transform: translateX(0);
         opacity: 1;
     }
+}/* ---- RESPONSIVE MOBILE FIXES ---- */
+@media (max-width: 768px) {
+    .game-layout {
+        flex-direction: column;
+        height: 100vh;
+        width: 100vw;
+        border-radius: 0;
+        border: none;
+    }
+    .players-sidebar {
+        width: 100%;
+        min-height: 100px;
+        max-height: 120px;
+        border-right: none;
+        border-bottom: 1px solid var(--panel-border);
+        flex-direction: row;
+    }
+    .sidebar-header {
+        display: none;
+    }
+    .players-list {
+        display: flex;
+        overflow-x: auto;
+        padding: 8px;
+    }
+    .player-item {
+        min-width: 140px;
+        margin-bottom: 0;
+        margin-right: 8px;
+    }
+    .leave-btn-container {
+        padding: 8px;
+        border-top: none;
+        border-left: 1px solid var(--panel-border);
+        display: flex;
+        align-items: center;
+    }
+    .chat-sidebar {
+        width: 100%;
+        height: 200px;
+        border-left: none;
+        border-top: 1px solid var(--panel-border);
+    }
+    .controls {
+        flex-wrap: wrap;
+        padding: 8px;
+        gap: 8px;
+        justify-content: center;
+    }
+    .tool-group.right-align {
+        margin-left: 0;
+        justify-content: center;
+        width: 100%;
+    }
+    .lobby-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+    }
+    .room-list {
+        grid-template-columns: 1fr;
+    }
+    .room-card {
+        padding: 16px;
+    }
+    .card {
+        padding: 24px;
+        width: 90%;
+    }
+    .word-hints {
+        font-size: 1.5rem;
+    }
+    .canvas-overlay h2 {
+        font-size: 1.8rem;
+    }
 }
