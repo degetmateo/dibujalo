@@ -48,7 +48,7 @@ module.exports = function (io, gameLogic) {
                 gameState: { status: 'waiting', currentRound: 0, painterId: null, word: null, timer: 0, guessedPlayers: [], roundScores: {} }
             };
             socket.emit('joinRoomResponse', { success: true, roomId });
-            joinRoomLogic(socket, roomId);
+            joinRoomLogic(socket, roomId, true); // true = host just created
             broadcastRoomList();
         });
 
@@ -61,11 +61,11 @@ module.exports = function (io, gameLogic) {
                 return socket.emit('joinRoomResponse', { success: false, message: 'Contraseña incorrecta' });
             }
             socket.emit('joinRoomResponse', { success: true, roomId: r.id });
-            joinRoomLogic(socket, r.id);
+            joinRoomLogic(socket, r.id, false);
             broadcastRoomList();
         });
 
-        function joinRoomLogic(sock, roomId) {
+        function joinRoomLogic(sock, roomId, isCreated) {
             const r = rooms[roomId];
             const u = users[sock.id];
             sock.join(roomId);
@@ -73,6 +73,25 @@ module.exports = function (io, gameLogic) {
             r.players[sock.id] = { id: sock.id, nickname: u.nickname, score: 0 };
             broadcastRoomUpdate(roomId);
             sendSystemMessage(roomId, `${u.nickname} se ha unido a la sala.`);
+
+            if (isCreated) {
+                // Instantly auto-start the match
+                startGame(roomId);
+            } else {
+                // LATE JOINER SYNC
+                if (r.gameState.status === 'playing') {
+                    // Send them the active round data right now
+                    const wordHint = r.gameState.word.replace(/[a-zA-Záéíóúüñ]/g, '_ ').trim();
+                    sock.emit('roundStarted', {
+                        painterId: r.gameState.painterId,
+                        wordHint: wordHint,
+                        word: r.gameState.word // Only frontend knows if it's painter
+                    });
+                } else if (r.gameState.status === 'selecting_word') {
+                    // they just see waiting / choosing
+                    // no specific action purely for them
+                }
+            }
         }
 
         socket.on('leaveRoom', () => {
@@ -114,12 +133,7 @@ module.exports = function (io, gameLogic) {
             }
         }
 
-        socket.on('startGame', () => {
-            const r = rooms[users[socket.id]?.roomId];
-            if (r && r.gameState.status === 'waiting') {
-                startGame(r.id);
-            }
-        });
+        // Removed manual startGame event
 
         socket.on('wordChosen', (word) => {
             const u = users[socket.id];

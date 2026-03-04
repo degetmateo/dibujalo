@@ -27,7 +27,7 @@ module.exports = function (io) {
 
     function startGame(roomId) {
         const r = rooms[roomId];
-        if (!r || Object.keys(r.players).length < 2) return;
+        if (!r || Object.keys(r.players).length < 1) return; // Allow 1 player to test/start
 
         Object.values(r.players).forEach(p => p.score = 0);
         r.gameState.currentRound = 1;
@@ -46,6 +46,8 @@ module.exports = function (io) {
             }
             r.gameState.currentRound++;
             r.painterQueue = Object.keys(r.players);
+            // In case no players left to queue (alone and left)
+            if (r.painterQueue.length === 0) return endGame(roomId);
         }
 
         r.gameState.status = 'selecting_word';
@@ -169,14 +171,20 @@ module.exports = function (io) {
             winner: winner
         });
 
+        // Endless Loop: Instead of going to waiting, wait 10 seconds and start again if players remain
         setTimeout(() => {
             if (rooms[roomId]) {
-                rooms[roomId].gameState.status = 'waiting';
-                rooms[roomId].painterQueue = [];
-                Object.values(rooms[roomId].players).forEach(p => p.score = 0);
-                broadcastRoomUpdate(roomId);
+                if (Object.keys(rooms[roomId].players).length > 0) {
+                    startGame(roomId);
+                } else {
+                    // Reset to wait if everyone somehow left right at the end
+                    rooms[roomId].gameState.status = 'waiting';
+                    rooms[roomId].painterQueue = [];
+                    Object.values(rooms[roomId].players).forEach(p => p.score = 0);
+                    broadcastRoomUpdate(roomId);
+                }
             }
-        }, 15000);
+        }, 10000);
     }
 
     return {

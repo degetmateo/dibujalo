@@ -5,7 +5,7 @@ import {
     loginScreen, lobbyScreen, gameScreen, createRoomModal, passwordModal,
     loginError, passwordError, roomListDiv, searchRoomInput,
     timerDisplay, wordDisplay, roundDisplay, drawingControls,
-    wordSelectionOverlay, wordOptionsDiv, roundEndOverlay, roundEndMessage, roundEndWordSpan, roundScoreboard, startGameOverlay, startGameBtn
+    wordSelectionOverlay, wordOptionsDiv, roundEndOverlay, roundEndMessage, roundEndWordSpan, roundScoreboard
 } from './ui.js';
 import {
     initCanvas, clearCanvasLocally, handleRemoteDraw, handleRemoteStrokeEnd, handleRemoteUndo, resizeCanvas
@@ -105,7 +105,6 @@ function resetGameUI() {
     document.getElementById('chatMessages').innerHTML = '';
     wordSelectionOverlay.classList.remove('active');
     roundEndOverlay.classList.remove('active');
-    startGameOverlay.classList.remove('active');
     drawingControls.classList.add('tools-disabled');
     myState.isPainter = false;
     myState.hasGuessed = false;
@@ -114,20 +113,7 @@ function resetGameUI() {
 socket.on('roomUpdate', (roomData) => {
     updatePlayersList(roomData);
     roundDisplay.textContent = `Ronda: ${roomData.gameState.currentRound}/${roomData.maxRounds}`;
-
-    if (roomData.gameState.status === 'waiting') {
-        startGameOverlay.classList.add('active');
-        if (roomData.players.length >= 2) {
-            startGameBtn.classList.remove('hidden');
-        } else {
-            startGameBtn.classList.add('hidden');
-        }
-    } else {
-        startGameOverlay.classList.remove('active');
-    }
 });
-
-startGameBtn.addEventListener('click', () => { socket.emit('startGame'); });
 
 socket.on('wordSelection', (choices) => {
     wordOptionsDiv.innerHTML = '';
@@ -142,7 +128,6 @@ socket.on('wordSelection', (choices) => {
         wordOptionsDiv.appendChild(btn);
     });
     roundEndOverlay.classList.remove('active');
-    startGameOverlay.classList.remove('active');
     wordSelectionOverlay.classList.add('active');
 });
 
@@ -154,7 +139,6 @@ socket.on('roundStarted', (data) => {
 
     wordSelectionOverlay.classList.remove('active');
     roundEndOverlay.classList.remove('active');
-    startGameOverlay.classList.remove('active');
 
     myState.isPainter = (data.painterId === socket.id);
     myState.hasGuessed = false;

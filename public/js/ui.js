@@ -30,8 +30,6 @@ export const roundEndOverlay = document.getElementById('roundEndOverlay');
 export const roundEndMessage = document.getElementById('roundEndMessage');
 export const roundEndWordSpan = document.getElementById('roundEndWord');
 export const roundScoreboard = document.getElementById('roundScoreboard');
-export const startGameOverlay = document.getElementById('startGameOverlay');
-export const startGameBtn = document.getElementById('startGameBtn');
 
 export function showScreen(screenEl) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('view-active'));
