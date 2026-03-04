@@ -1,5 +1,5 @@
 const { users, rooms } = require('../state');
-const { getRandomChoices } = require('../utils/words');
+const { getRandomChoices, loadWords } = require('../utils/words');
 
 const ROUND_TIME = 100;
 
@@ -25,7 +25,8 @@ module.exports = function (io) {
         io.to(roomId).emit('chatMessage', { sender: 'Sistema', message: msg, type });
     }
 
-    function startGame(roomId) {
+    async function startGame(roomId) {
+        await loadWords();
         const r = rooms[roomId];
         if (!r || Object.keys(r.players).length < 1) return; // Allow 1 player to test/start
 
