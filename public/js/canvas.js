@@ -8,11 +8,13 @@ const sizePicker = document.getElementById('sizePicker');
 const clearBtn = document.getElementById('clearBtn');
 const undoBtn = document.getElementById('undoBtn');
 const toolPencil = document.getElementById('toolPencil');
+const toolBucket = document.getElementById('toolBucket');
 const toolEraser = document.getElementById('toolEraser');
 
 let currentTool = 'pencil';
 export function initCanvas() {
     toolPencil.addEventListener('click', () => { currentTool = 'pencil'; updateToolUI(); });
+    toolBucket.addEventListener('click', () => { currentTool = 'bucket'; updateToolUI(); });
     toolEraser.addEventListener('click', () => { currentTool = 'eraser'; updateToolUI(); });
 
     colorPicker.addEventListener('input', (e) => current.color = e.target.value);
@@ -47,6 +49,7 @@ export function initCanvas() {
 
 export function updateToolUI() {
     toolPencil.classList.toggle('active', currentTool === 'pencil');
+    toolBucket.classList.toggle('active', currentTool === 'bucket');
     toolEraser.classList.toggle('active', currentTool === 'eraser');
 }
 
@@ -71,9 +74,13 @@ let currentStroke = [];
 export function redrawHistory() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     strokesHistory.forEach(stroke => {
-        stroke.forEach(line => {
-            drawLine(line.x0, line.y0, line.x1, line.y1, line.color, line.size, line.isEraser, false);
-        });
+        if (stroke.length > 0 && stroke[0].type === 'fill') {
+            performFloodFill(stroke[0].x, stroke[0].y, stroke[0].color);
+        } else {
+            stroke.forEach(line => {
+                drawLine(line.x0, line.y0, line.x1, line.y1, line.color, line.size, line.isEraser, false);
+            });
+        }
     });
 }
 
@@ -126,6 +133,21 @@ function onDrawStart(e) {
     current.size = sizePicker.value;
     const pos = getPos(e);
     current.x = pos.x; current.y = pos.y;
+
+    if (currentTool === 'bucket') {
+        const fillSuccess = performFloodFill(current.x, current.y, current.color);
+        if (fillSuccess) {
+            strokesHistory.push([{ type: 'fill', x: current.x, y: current.y, color: current.color }]);
+            socket.emit('fill', {
+                x: current.x / canvas.width,
+                y: current.y / canvas.height,
+                color: current.color
+            });
+        }
+        isDrawing = false; // Don't track drag for bucket
+        return;
+    }
+
     drawLine(current.x, current.y, current.x + 0.1, current.y + 0.1, current.color, current.size, currentTool === 'eraser', true);
 }
 
@@ -174,4 +196,121 @@ export function handleRemoteUndo() {
         if (strokesHistory.length > 0) strokesHistory.pop();
         redrawHistory();
     }
+}
+
+export function handleRemoteFill(data) {
+    const ax = data.x * canvas.width;
+    const ay = data.y * canvas.height;
+
+    if (!myState.isPainter) {
+        strokesHistory.push([{ type: 'fill', x: ax, y: ay, color: data.color }]);
+    }
+    performFloodFill(ax, ay, data.color);
+}
+
+// ---- FLOOD FILL ALGORITHM ----
+function hexToRgba(hex) {
+    let c;
+    if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+        c = hex.substring(1).split('');
+        if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+        c = '0x' + c.join('');
+        return [(c >> 16) & 255, (c >> 8) & 255, c & 255, 255];
+    }
+    return [0, 0, 0, 255];
+}
+
+function performFloodFill(startX, startY, fillColorHex) {
+    const x = Math.floor(startX);
+    const y = Math.floor(startY);
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+
+    if (x < 0 || y < 0 || x >= canvasWidth || y >= canvasHeight) return false;
+
+    const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+    const data = imageData.data;
+
+    const startPos = (y * canvasWidth + x) * 4;
+    const startR = data[startPos];
+    const startG = data[startPos + 1];
+    const startB = data[startPos + 2];
+    const startA = data[startPos + 3];
+
+    const fillRgba = hexToRgba(fillColorHex);
+    // Tolerance buffer for anti-aliasing edges (optional, strictly matching here)
+    const matchTolerance = 5;
+
+    // Check if target color is effectively the same as current color
+    if (Math.abs(startR - fillRgba[0]) <= matchTolerance &&
+        Math.abs(startG - fillRgba[1]) <= matchTolerance &&
+        Math.abs(startB - fillRgba[2]) <= matchTolerance &&
+        Math.abs(startA - fillRgba[3]) <= matchTolerance) {
+        return false;
+    }
+
+    function matchStartColor(pos) {
+        return Math.abs(data[pos] - startR) <= matchTolerance &&
+            Math.abs(data[pos + 1] - startG) <= matchTolerance &&
+            Math.abs(data[pos + 2] - startB) <= matchTolerance &&
+            Math.abs(data[pos + 3] - startA) <= matchTolerance;
+    }
+
+    function colorPixel(pos) {
+        data[pos] = fillRgba[0];
+        data[pos + 1] = fillRgba[1];
+        data[pos + 2] = fillRgba[2];
+        data[pos + 3] = 255;
+    }
+
+    const pixelStack = [[x, y]];
+
+    while (pixelStack.length) {
+        const newPos = pixelStack.pop();
+        let curX = newPos[0];
+        let curY = newPos[1];
+        let pixelPos = (curY * canvasWidth + curX) * 4;
+
+        while (curY >= 0 && matchStartColor(pixelPos)) {
+            curY--;
+            pixelPos -= canvasWidth * 4;
+        }
+        pixelPos += canvasWidth * 4;
+        curY++;
+
+        let reachLeft = false;
+        let reachRight = false;
+
+        while (curY < canvasHeight && matchStartColor(pixelPos)) {
+            colorPixel(pixelPos);
+
+            if (curX > 0) {
+                if (matchStartColor(pixelPos - 4)) {
+                    if (!reachLeft) {
+                        pixelStack.push([curX - 1, curY]);
+                        reachLeft = true;
+                    }
+                } else if (reachLeft) {
+                    reachLeft = false;
+                }
+            }
+
+            if (curX < canvasWidth - 1) {
+                if (matchStartColor(pixelPos + 4)) {
+                    if (!reachRight) {
+                        pixelStack.push([curX + 1, curY]);
+                        reachRight = true;
+                    }
+                } else if (reachRight) {
+                    reachRight = false;
+                }
+            }
+
+            curY++;
+            pixelPos += canvasWidth * 4;
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return true;
 }

@@ -15,7 +15,11 @@
     <!-- Login Screen -->
     <div id="loginScreen" class="screen view-active">
         <div class="card">
-            <h1>Dibújalo</h1>
+            <h1>Dibújalo
+                <button type="button" class="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">
+                    <span class="themeIcon">🌙</span>
+                </button>
+            </h1>
             <p>Juego multijugador de dibujo y adivinanza</p>
             <form id="loginForm">
                 <input type="text" id="nicknameInput" placeholder="Ingresa tu apodo..." required maxlength="15"
@@ -34,6 +38,9 @@
                 <div class="lobby-controls">
                     <input type="text" id="searchRoomInput" placeholder="Buscar sala...">
                     <button id="showCreateRoomBtn" class="primary-btn">Crear Sala</button>
+                    <button type="button" class="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">
+                        <span class="themeIcon">🌙</span>
+                    </button>
                 </div>
             </header>
             <div class="room-list" id="roomList">
@@ -115,6 +122,9 @@
                     <div class="timer" id="timerDisplay">--</div>
                     <div class="word-hints" id="wordDisplay">ESPERANDO JUGADORES</div>
                     <div class="round-info" id="roundDisplay">Ronda: -/-</div>
+                    <button type="button" class="theme-toggle" aria-label="Cambiar tema" title="Cambiar tema">
+                        <span class="themeIcon">🌙</span>
+                    </button>
                 </header>
 
                 <div class="canvas-container">
@@ -138,6 +148,7 @@
                 <div class="controls tools-disabled" id="drawingControls">
                     <div class="tool-group">
                         <button id="toolPencil" class="tool-btn active" title="Pincel">✏️</button>
+                        <button id="toolBucket" class="tool-btn" title="Balde de Pintura">🪣</button>
                         <button id="toolEraser" class="tool-btn" title="Goma">🧽</button>
                     </div>
                     <div class="tool-group">

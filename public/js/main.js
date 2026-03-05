@@ -8,7 +8,7 @@ import {
     wordSelectionOverlay, wordOptionsDiv, roundEndOverlay, roundEndMessage, roundEndWordSpan, roundScoreboard
 } from './ui.js';
 import {
-    initCanvas, clearCanvasLocally, handleRemoteDraw, handleRemoteStrokeEnd, handleRemoteUndo, resizeCanvas
+    initCanvas, clearCanvasLocally, handleRemoteDraw, handleRemoteStrokeEnd, handleRemoteUndo, resizeCanvas, handleRemoteFill
 } from './canvas.js';
 import { playSound, sfXRing, sfXTick, sfXEnd, escapeHtml } from './utils.js';
 
@@ -244,4 +244,32 @@ socket.on('chatMessage', (data) => {
 socket.on('draw', handleRemoteDraw);
 socket.on('strokeEnd', handleRemoteStrokeEnd);
 socket.on('undo', handleRemoteUndo);
+socket.on('fill', handleRemoteFill);
 socket.on('clear', () => { clearCanvasLocally(); });
+
+// ========================
+// THEME TOGGLE LOGIC
+// ========================
+const themeToggleBtns = document.querySelectorAll('.theme-toggle');
+
+function updateThemeIcons(isDark) {
+    themeToggleBtns.forEach(btn => {
+        const iconSpan = btn.querySelector('.themeIcon');
+        if (iconSpan) iconSpan.textContent = isDark ? '☀️' : '🌙';
+    });
+}
+
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'dark') {
+    document.body.classList.add('dark-theme');
+    updateThemeIcons(true);
+}
+
+themeToggleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.body.classList.toggle('dark-theme');
+        const isDark = document.body.classList.contains('dark-theme');
+        updateThemeIcons(isDark);
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+});

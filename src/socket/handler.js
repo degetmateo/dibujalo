@@ -214,6 +214,15 @@ module.exports = function (io, gameLogic) {
             }
         });
 
+        socket.on('fill', (data) => {
+            const u = users[socket.id];
+            if (!u || !u.roomId) return;
+            const r = rooms[u.roomId];
+            if (r && r.gameState.painterId === socket.id && r.gameState.status === 'playing') {
+                socket.to(r.id).emit('fill', data);
+            }
+        });
+
         socket.on('disconnect', () => {
             console.log('User disconnected:', socket.id);
             handleLeaveRoom(socket);
