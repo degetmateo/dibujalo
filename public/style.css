@@ -602,6 +602,26 @@ canvas {
     font-weight: bold;
 }
 
+.score-line.podium-gold {
+    background: linear-gradient(90deg, rgba(250, 204, 21, 0.15), transparent);
+    border-left: 4px solid #facc15;
+}
+
+.score-line.podium-silver {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.15), transparent);
+    border-left: 4px solid #94a3b8;
+}
+
+.score-line.podium-bronze {
+    background: linear-gradient(90deg, rgba(180, 83, 9, 0.15), transparent);
+    border-left: 4px solid #b45309;
+}
+
+.accent-word {
+    color: var(--accent-blue);
+    font-weight: 800;
+}
+
 /* Tools */
 .controls {
     display: flex;

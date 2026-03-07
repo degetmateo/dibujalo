@@ -168,7 +168,8 @@ socket.on('wordHintUpdate', (hint) => {
 });
 
 socket.on('roundEnded', (data) => {
-    roundEndWordSpan.textContent = data.word;
+    roundEndMessage.innerHTML = `¡La palabra era: <span class="accent-word">${escapeHtml(data.word)}</span>!`;
+    roundEndMessage.style.display = 'block';
     roundScoreboard.innerHTML = '';
 
     // Sort by points earned this round and display
@@ -177,34 +178,47 @@ socket.on('roundEnded', (data) => {
     if (roundScores.length > 0) highestPoints = roundScores[0].points;
 
     roundScores.forEach(s => {
-        if (s.points > 0) {
-            const isRoundWinner = (s.points === highestPoints && highestPoints > 0);
-            const winnerIcon = isRoundWinner ? ' 👑' : '';
-            roundScoreboard.innerHTML += `<div class="score-line ${isRoundWinner ? 'winner-line' : ''}"><span>${escapeHtml(s.nickname)}${winnerIcon}</span><span class="pts">+${s.points}</span></div>`;
-        }
+        const isRoundWinner = (s.points === highestPoints && highestPoints > 0);
+        const winnerIcon = isRoundWinner ? ' 👑' : '';
+        roundScoreboard.innerHTML += `<div class="score-line ${isRoundWinner ? 'winner-line' : ''}"><span>${escapeHtml(s.nickname)}${winnerIcon}</span><span class="pts">+${s.points}</span></div>`;
     });
-
-    if (roundScoreboard.innerHTML === '') {
-        roundScoreboard.innerHTML = '<div class="score-line"><span>Nadie sumó puntos</span></div>';
-    }
 
     roundEndOverlay.classList.add('active');
     drawingControls.classList.add('tools-disabled');
 });
 
+socket.on('fullRoundEnded', (data) => {
+    playSound(sfXRing);
+    roundEndMessage.innerHTML = '¡Comenzará una nueva ronda!';
+    roundEndMessage.style.display = 'block';
+    roundScoreboard.innerHTML = '';
+
+    data.players.sort((a, b) => b.totalScore - a.totalScore).forEach(p => {
+        roundScoreboard.innerHTML += `<div class="score-line"><span>${escapeHtml(p.nickname)}</span><span class="pts">${p.totalScore} pts</span></div>`;
+    });
+
+    roundEndOverlay.classList.add('active');
+});
+
 socket.on('gameEnded', (data) => {
     playSound(sfXEnd);
-    roundEndMessage.innerHTML = '¡Juego Terminado!<br>Ganador: ' + escapeHtml(data.winner.nickname);
-    roundEndWordSpan.parentElement.style.display = 'none';
+    roundEndMessage.innerHTML = `<span style="font-size:1.5rem">¡Juego Terminado!</span><br>¡GANADOR: ${escapeHtml(data.winner.nickname)}!`;
+    roundEndMessage.style.display = 'block';
     roundScoreboard.innerHTML = '';
-    data.players.sort((a, b) => b.score - a.score).forEach(p => {
-        roundScoreboard.innerHTML += `<div class="score-line"><span>${escapeHtml(p.nickname)}</span><span class="pts">${p.score} pts</span></div>`;
+
+    const sortedPlayers = data.players.sort((a, b) => b.score - a.score);
+    sortedPlayers.forEach((p, index) => {
+        let podiumClass = '';
+        if (index === 0) podiumClass = 'podium-gold';
+        else if (index === 1) podiumClass = 'podium-silver';
+        else if (index === 2) podiumClass = 'podium-bronze';
+
+        roundScoreboard.innerHTML += `<div class="score-line ${podiumClass}"><span>${escapeHtml(p.nickname)}</span><span class="pts">${p.score} pts</span></div>`;
     });
     roundEndOverlay.classList.add('active');
 
     setTimeout(() => {
         roundEndOverlay.classList.remove('active');
-        roundEndWordSpan.parentElement.style.display = 'block';
     }, 10000);
 });
 

@@ -87,7 +87,12 @@ module.exports = function (io) {
         r.gameState.word = word;
         r.gameState.timer = ROUND_TIME;
 
-        const wordHint = word.replace(/[a-zA-Záéíóúüñ]/g, '_ ').trim();
+        let wordHint = "";
+        for (let char of word) {
+            if (char === ' ') wordHint += '\u00A0\u00A0\u00A0';
+            else wordHint += '_ ';
+        }
+        wordHint = wordHint.trim();
 
         io.to(roomId).emit('roundStarted', {
             painterId: r.gameState.painterId,
@@ -104,7 +109,7 @@ module.exports = function (io) {
             if (r.gameState.timer === Math.floor(ROUND_TIME / 2) && r.gameState.word) {
                 let revealedHint = "";
                 for (let i = 0; i < word.length; i++) {
-                    if (word[i] === ' ') revealedHint += '  ';
+                    if (word[i] === ' ') revealedHint += '\u00A0\u00A0\u00A0';
                     else if (i === 0 || i === Math.floor(word.length / 2)) revealedHint += word[i] + ' ';
                     else revealedHint += '_ ';
                 }
@@ -154,7 +159,24 @@ module.exports = function (io) {
         broadcastRoomUpdate(roomId);
 
         setTimeout(() => {
-            startRound(roomId);
+            if (r.painterQueue.length === 0) {
+                if (r.gameState.currentRound >= r.maxRounds) {
+                    startRound(roomId);
+                } else {
+                    const totalScores = Object.values(r.players).map(p => ({
+                        nickname: p.nickname,
+                        totalScore: p.score
+                    }));
+                    io.to(roomId).emit('fullRoundEnded', {
+                        players: totalScores
+                    });
+                    setTimeout(() => {
+                        startRound(roomId);
+                    }, 5000);
+                }
+            } else {
+                startRound(roomId);
+            }
         }, 5000);
     }
 
